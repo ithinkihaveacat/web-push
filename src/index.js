@@ -22,6 +22,25 @@ const ECPrivateKeyASN = asn1.define('ECPrivateKey', function() {
   );
 });
 
+function toCurl(request, body) {
+  let data = '';
+  let buffer = body;
+
+  for (let i = 0; i < buffer.length; i++) {
+    data += '\\x' + buffer.slice(i, i + 1).toString('hex');
+  }
+
+  let endpoint = `https://${request.hostname}${request.path}`;
+
+  const headers = Object.keys(request.headers).map(
+    h => `-H '${h}: ${request.headers[h]}'`
+  ).join(' ');
+
+  console.log(
+    `echo -ne '${data}' | curl -v ${headers} '${endpoint}' --data-binary @-`
+  );
+}
+
 function toPEM(key) {
   return ECPrivateKeyASN.encode({
     version: 1,
@@ -227,6 +246,8 @@ function sendNotification(endpoint, params) {
       if (requestPayload) {
         options.headers['Content-Length'] = requestPayload.length;
       }
+
+      toCurl(options, requestPayload);
 
       const pushRequest = https.request(options, function(pushResponse) {
         let body = '';
